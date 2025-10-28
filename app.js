@@ -253,7 +253,8 @@ function updateGlobalStatsFromRun(){
 
 /* ========= Logros (datos base) ========= */
 function getAchievements(){ return lsGet(LS.achievements, {}); }
-function unlockAchievement(key){
+unlockedThisRun.add(key); // SOLO los de esta partida
+{
   const all = getAchievements(); if (all[key]) return;
   all[key] = { date: new Date().toISOString() };
   lsSet(LS.achievements, all);
@@ -448,7 +449,6 @@ function newGame(){
   lsSet(LS.last, { mode: currentMode, level: currentLevel, theme: currentTheme });
 
   showScreen('game');
-  tryUnlockFirstTheme(currentTheme);
   renderQuestion();
 }
 
@@ -470,21 +470,19 @@ async function loadAchCatalog(){
   }catch(e){ return {}; }
 }
 
-async function renderFinalAchievementChips(listEl){
+async function renderFinalAchievementChips(listEl, idsOpt){
   try{
-    const keys = Object.keys(getAchievements()); // IDs
-    if (!keys.length){
-      listEl.innerHTML = `<span class="text-slate-500 text-sm">Sin logros aún.</span>`;
-      return;
-    }
+    const ids = idsOpt && idsOpt.length ? idsOpt : Object.keys(getAchievements());
+    if (!ids.length){ listEl.innerHTML=''; return; }
     const cat = await loadAchCatalog();
-    listEl.innerHTML = keys.map(id=>{
+    listEl.innerHTML = ids.map(id=>{
       const a = cat[id];
       const name = a?.name || id;
       return `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs">🏅 ${name}</span>`;
     }).join(' ');
-  }catch(e){ /* noop */ }
+  }catch(e){ /* nada */ }
 }
+
 
   const map = { 
     'all':'logro_primer_mundo',
@@ -511,9 +509,9 @@ async function loadAchCatalog(){
     return map;
   }catch(e){ return {}; }
 }
-async function renderFinalAchievementChips(listEl){
+async function renderFinalAchievementChips(listEl, idsOpt){
   try{
-    const keys = Object.keys(getAchievements()); // IDs
+    const keys = idsOpt && idsOpt.length ? idsOpt : Object.keys(getAchievements());
     if (!keys.length){ listEl.innerHTML=''; return; }
     const cat = await loadAchCatalog();
     listEl.innerHTML = keys.map(id=>{
@@ -864,8 +862,34 @@ function onSelect(e){
     markButtons($$("#card-capital .answer-btn.cap"), btn);
   }
 
-  if (correct && currentMode==='capitals'){ if(!hasAchievement('logro_primera_capital')) unlockIfPresent('logro_primera_capital'); }
-if (correct && currentMode!=='capitals' && currentMode!=='study'){ if(!hasAchievement('logro_primera_bandera')) unlockIfPresent('logro_primera_bandera'); }
+// Desbloqueos por región y tipo (IDs nuevos del Excel)
+try {
+  const regionKey = (q.item?.region || 'all');
+  if (q.kind === 'flag') {
+    const map = {
+      all:'primer_bandera_mundo',
+      Europe:'primer_bandera_europa',
+      Asia:'primer_bandera_asia',
+      Africa:'primer_bandera_africa',
+      Americas:'primer_bandera_america',
+      Oceania:'primer_bandera_oceania'
+    };
+    const id = map[regionKey] || map.all;
+    unlockIfPresent(id);
+  } else if (q.kind === 'capital') {
+    const map = {
+      all:'primer_capital_mundo',
+      Europe:'primer_capital_europa',
+      Asia:'primer_capital_asia',
+      Africa:'primer_capital_africa',
+      Americas:'primer_capital_america',
+      Oceania:'primer_capital_oceania'
+    };
+    const id = map[regionKey] || map.all;
+    unlockIfPresent(id);
+  }
+} catch(e){}
+
   
 
   if (currentMode==='survival'){
@@ -958,7 +982,7 @@ function endGame(){
   if (currentMode==='survival' && timeSurvivedSec>=60) unlockAchievement('survival60');
   
   
-renderFinalAchievementChips(ui.achievementsList);
+renderFinalAchievementChips(ui.achievementsList, Array.from(unlockedThisRun));
 
   if (unlockedThisRun.size > 0) { ui.openAlbumFromFinal.classList.remove('hidden'); }
   else { ui.openAlbumFromFinal.classList.add('hidden'); }
