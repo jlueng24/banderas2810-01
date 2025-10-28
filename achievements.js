@@ -134,7 +134,11 @@ async function loadCatalog() {
     document.body.classList.remove('overflow-hidden');
   }
   function openDrawer(meta, unlockedInfo) {
-    $('#achArt').textContent = (catEmoji[meta.category] || '🏅');
+    if (meta.art && meta.art.trim()){
+  $('#achArt').innerHTML = `<img src="${meta.art}" alt="${meta.name}" class="w-10 h-10 rounded-xl object-cover" />`;
+} else {
+  $('#achArt').textContent = (catEmoji[meta.category] || '🏅');
+}
     $('#achName').textContent = meta.name;
     $('#achCat').textContent = meta.category || 'General';
     $('#achDesc').textContent = meta.desc || meta.idea || '';
@@ -148,7 +152,7 @@ async function loadCatalog() {
 
   // API principal que usa el botón "Logros" de la app
   window.renderAchievements = async function renderAchievements() {
-    const modal = ensureModal();
+    const modal = ensureModal();$('#achPct')?.closest('section')?.classList.add('hidden');
     const grid = $('#achGrid');
     const catalog = await loadCatalog();
     const unlocked = listUnlocked();
@@ -160,14 +164,19 @@ async function loadCatalog() {
       if (isUnlocked) unlockedCount++;
       const cls = isUnlocked ? 'opacity-100' : 'opacity-60';
       const aura = isUnlocked ? 'ring-2 ring-emerald-400/50' : 'ring-1 ring-slate-200';
-      const emoji = (catEmoji[meta.category] || '🏅');
+      const hasArt = meta.art && String(meta.art).trim().length > 0;
       const tier = tierBg[meta.tier] || 'bg-slate-100';
+      const iconNode = hasArt
+        ? `<img src="${meta.art}" alt="${meta.name}" class="w-16 h-16 mx-auto rounded-xl object-cover ${cls}" />`
+        : `<div class="w-16 h-16 mx-auto rounded-xl grid place-items-center text-2xl ${tier} ${cls}">${catEmoji[meta.category] || '🏅'}</div>`;
+
       return `
         <article class="rounded-2xl ${aura} p-3 bg-white hover:shadow transition cursor-pointer ach-card" data-id="${meta.id}">
-          <div class="w-16 h-16 mx-auto rounded-xl grid place-items-center text-2xl ${tier} ${cls}">${emoji}</div>
+          ${iconNode}
           <h4 class="mt-2 text-sm text-center font-medium">${meta.name}</h4>
           <div class="text-[11px] text-slate-500 text-center">${meta.category || 'General'} · ${meta.tier || 'bronce'}</div>
         </article>`;
+
     }).join('');
 
     // Progreso
